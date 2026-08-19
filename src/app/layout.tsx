@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { lerTema } from "@/lib/tema-servidor";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,13 +20,31 @@ export const metadata: Metadata = {
   description: "Controle pessoal de negociações de veículos",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+// Só roda quando tema === "sistema" (ausência de preferência salva). Aplica a classe `dark`
+// antes da primeira pintura para não haver flash — script inline síncrono no <head>, nunca em
+// Client Component (que só executaria depois da hidratação).
+const SCRIPT_NO_FLASH = `(function(){try{if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark");}}catch(e){}})();`;
+
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  const tema = await lerTema();
+
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased${
+        tema === "escuro" ? " dark" : ""
+      }`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        {tema === "sistema" && (
+          <script dangerouslySetInnerHTML={{ __html: SCRIPT_NO_FLASH }} />
+        )}
+      </head>
+      <body className="min-h-full flex flex-col">
+        <TooltipProvider>{children}</TooltipProvider>
+        <Toaster />
+      </body>
     </html>
   );
 }

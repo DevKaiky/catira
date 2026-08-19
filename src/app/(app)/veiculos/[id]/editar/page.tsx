@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { buscarVeiculo } from "@/lib/queries/veiculos";
 import type { NovoVeiculoInput } from "@/types/database";
+import { PageHeader } from "@/components/layout/PageHeader";
 import VeiculoEditarFormClient from "./VeiculoEditarFormClient";
 
 export default async function EditarVeiculoPage({
@@ -32,23 +34,20 @@ export default async function EditarVeiculoPage({
   };
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
-            Editar {veiculo.marca} {veiculo.modelo}
-          </h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            O valor de aquisição não é editado aqui — ele mora na negociação de origem.
-          </p>
-        </div>
-        <Link
-          href={`/veiculos/${id}`}
-          className="text-sm text-zinc-500 hover:underline dark:text-zinc-400"
-        >
-          Voltar
-        </Link>
-      </div>
+    <div className="mx-auto w-full max-w-3xl">
+      <PageHeader
+        titulo={`Editar ${veiculo.marca} ${veiculo.modelo}`}
+        subtitulo="O valor de aquisição não é editado aqui — ele mora na negociação de origem."
+        acao={
+          <Link
+            href={`/veiculos/${id}`}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+          >
+            <ArrowLeft className="size-4" />
+            Voltar
+          </Link>
+        }
+      />
 
       <VeiculoEditarFormClient id={id} valoresIniciais={valoresIniciais} />
     </div>

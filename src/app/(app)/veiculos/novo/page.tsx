@@ -1,20 +1,24 @@
 import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { PageHeader } from "@/components/layout/PageHeader";
 import VeiculoNovoFormClient from "./VeiculoNovoFormClient";
 
 export default function NovoVeiculoPage() {
   return (
-    <div className="mx-auto w-full max-w-3xl px-6 py-10">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">Novo veículo</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Cadastre um veículo direto no estoque, com ou sem valor de aquisição.
-          </p>
-        </div>
-        <Link href="/veiculos" className="text-sm text-zinc-500 hover:underline dark:text-zinc-400">
-          Voltar
-        </Link>
-      </div>
+    <div className="mx-auto w-full max-w-3xl">
+      <PageHeader
+        titulo="Novo veículo"
+        subtitulo="Cadastre um veículo direto no estoque, com ou sem valor de aquisição."
+        acao={
+          <Link
+            href="/veiculos"
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+          >
+            <ArrowLeft className="size-4" />
+            Voltar
+          </Link>
+        }
+      />
 
       <VeiculoNovoFormClient />
     </div>

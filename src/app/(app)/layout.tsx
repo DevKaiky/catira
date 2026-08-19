@@ -1,7 +1,16 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { signOut } from "@/app/login/actions";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import { AppSidebar } from "@/components/layout/AppSidebar";
+import { BottomNav } from "@/components/layout/BottomNav";
+import { UserCard } from "@/components/layout/UserCard";
+import { ThemeToggle } from "@/components/layout/ThemeToggle";
+
+// Mesmo nome de cookie usado internamente por src/components/ui/sidebar.tsx (não exportado por
+// lá) para persistir o estado aberto/fechado da sidebar entre reloads.
+const SIDEBAR_COOKIE_NAME = "sidebar_state";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -13,46 +22,27 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     redirect("/login");
   }
 
-  return (
-    <div className="flex flex-1 flex-col bg-zinc-50 dark:bg-black">
-      <header className="flex items-center justify-between border-b border-black/[.08] px-6 py-4 dark:border-white/[.145]">
-        <div className="flex items-center gap-8">
-          <Link href="/negocios" className="flex flex-col">
-            <span className="text-lg font-semibold text-zinc-950 dark:text-zinc-50">Catira</span>
-            <span className="text-sm text-zinc-500 dark:text-zinc-400">{user.email}</span>
-          </Link>
-          <nav className="flex items-center gap-4">
-            <Link
-              href="/negocios"
-              className="text-sm text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
-            >
-              Negócios
-            </Link>
-            <Link
-              href="/veiculos"
-              className="text-sm text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
-            >
-              Veículos
-            </Link>
-            <Link
-              href="/relatorios"
-              className="text-sm text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
-            >
-              Relatórios
-            </Link>
-          </nav>
-        </div>
-        <form action={signOut}>
-          <button
-            type="submit"
-            className="rounded-md border border-black/[.08] px-3 py-1.5 text-sm text-zinc-700 transition-colors hover:bg-black/[.04] dark:border-white/[.145] dark:text-zinc-300 dark:hover:bg-white/[.06]"
-          >
-            Sair
-          </button>
-        </form>
-      </header>
+  const cookieStore = await cookies();
+  const sidebarAberta = cookieStore.get(SIDEBAR_COOKIE_NAME)?.value !== "false";
 
-      {children}
-    </div>
+  return (
+    <SidebarProvider defaultOpen={sidebarAberta}>
+      <AppSidebar email={user.email ?? ""} />
+      <SidebarInset className="pb-24 md:pb-0">
+        <header className="flex items-center justify-between border-b border-border px-4 py-3 md:hidden">
+          <Link href="/" className="text-base font-semibold text-foreground">
+            Catira
+          </Link>
+          <div className="flex items-center gap-1">
+            <ThemeToggle />
+            <UserCard email={user.email ?? ""} compact />
+          </div>
+        </header>
+        <div className="flex-1 px-4 py-6 md:px-8 md:py-10">{children}</div>
+      </SidebarInset>
+      <div className="md:hidden">
+        <BottomNav />
+      </div>
+    </SidebarProvider>
   );
 }

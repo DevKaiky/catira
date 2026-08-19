@@ -7,9 +7,9 @@ vendas e trocas de veículos ("catira"), com IA como copiloto de análise e deci
 
 ## Stack
 
-Next.js 16 (App Router, Turbopack) + TypeScript + Tailwind CSS + Supabase (Postgres + Auth).
-Deploy em produção na Vercel: https://catira.vercel.app (projeto `catira`, org `devkaikys-projects`).
-PWA é objetivo de fase final, não implementado ainda.
+Next.js 16 (App Router, Turbopack) + TypeScript + Tailwind CSS v4 + shadcn/ui + Supabase
+(Postgres + Auth). Deploy em produção na Vercel: https://catira.vercel.app (projeto `catira`, org
+`devkaikys-projects`). PWA é objetivo de fase final, não implementado ainda.
 
 **Atenção Next.js 16:** `middleware.ts` foi renomeado para `proxy.ts` (função `proxy`, não
 `middleware`). Ver `AGENTS.md` — sempre checar `node_modules/next/dist/docs/` antes de usar APIs
@@ -31,6 +31,44 @@ do Next, pois a versão instalada é mais recente que o conhecimento do modelo.
       de mercado (OLX/Webmotors não têm API pública nem permitem scraping — usar campo manual de
       referência de preço por enquanto).
 - [ ] Fase 6 — refino como PWA.
+
+## Design system (shadcn/ui)
+
+Interface reconstruída em cima do shadcn/ui (CLI v4, base Radix, estilo `new-york`) sobre o
+Tailwind v4 já existente (sem `tailwind.config.js` — tokens em `@theme inline` no
+`src/app/globals.css`). Acento violeta. `components.json` na raiz.
+
+- `src/components/ui/` — componentes gerados pelo CLI, **não editar à mão** (exceção:
+  `sonner.tsx`, onde o import de `next-themes` foi removido de propósito — não reinstalar essa
+  lib, tem issues abertas com React 19/Next 16).
+- `src/components/layout/` — shell do app: `AppSidebar`, `NavPrincipal`, `UserCard`,
+  `BottomNav`, `ThemeToggle`, `PageHeader`. Sidebar fixa no desktop (`variant="inset"`), barra
+  inferior no mobile (decidido por breakpoint CSS `md:hidden`/`hidden md:flex`, nunca pelo hook
+  `useIsMobile` — ele retorna `undefined` no primeiro render e causa flash).
+- `src/components/catira/` — primitivas de domínio: `StatusBadge` (pill + bolinha, mapeia
+  `StatusVeiculo`/`StatusNegociacao` pra cor semântica), `MetricCard`, `ValorMonetario`,
+  `EmptyState`, `FiltroChips`, `NegociacaoCard`, `VeiculoCard`, `NativeSelect` (`<select>` nativo
+  estilizado — **decisão deliberada** de não usar o `Select` do shadcn/Radix: o nativo abre o
+  picker do sistema no mobile, melhor pro uso do app andando na rua).
+- **Tema claro/escuro via cookie próprio** (`src/lib/tema.ts` + `src/lib/tema-servidor.ts`,
+  `TEMA_COOKIE`), sem `next-themes`. `src/app/layout.tsx` lê o cookie e aplica a classe `dark` no
+  `<html>` (tem `suppressHydrationWarning` — necessário porque o script inline de "sem flash" do
+  modo "sistema" muda a classe antes da hidratação do React). `ThemeToggle.tsx` grava o cookie e
+  alterna a classe direto no client, sem round-trip ao servidor.
+- **Dashboard em `/`** (`src/app/(app)/page.tsx`) reusa `resolverPeriodo`/`buscarDadosDoPeriodo`/
+  `calcularMetricas` (granularidade mensal, sem IA) pros cards de métrica — não existe rota
+  `/painel` nem redirect, `/` é a página em si.
+- Zero mudança em queries/actions/RPCs/schema nesta reforma — foi puramente camada de
+  apresentação.
+- **Gotcha corrigido:** `globals.css` tinha uma regra `body { font-family: Arial }` que anulava
+  a fonte Geist configurada em `layout.tsx` — o app inteiro renderizava em Arial antes desta
+  reforma. Corrigido; a fonte é declarada com nomes literais no `@theme inline`
+  (`var(--font-geist-sans)` não resolve nesse contexto, só em runtime).
+- **Gotcha de fuso horário:** formulários client (`NegociacaoForm`, `VeiculoForm`, `DespesaForm`)
+  usavam uma função `hoje()` local baseada em `new Date().toISOString()` (UTC), enquanto o resto
+  do sistema usa `hojeSaoPaulo()` (`src/lib/relatorios/periodo.ts`, fuso America/Sao_Paulo). Isso
+  causava data errada por um dia perto da virada UTC/horário de Brasília (ex: "-1d em estoque").
+  Corrigido — todo lugar que precisa da data de hoje no client agora importa `hojeSaoPaulo()`.
 
 ## Camada de IA trocável (Fase 3+)
 

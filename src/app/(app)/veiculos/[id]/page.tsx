@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { buscarVeiculo } from "@/lib/queries/veiculos";
 import { calcularResultadoVeiculo } from "@/lib/veiculos/resultado";
 import { hojeSaoPaulo } from "@/lib/relatorios/periodo";
@@ -7,19 +8,18 @@ import {
   CATEGORIA_DESPESA_LABEL,
   formatarData,
   formatarMoeda,
-  STATUS_VEICULO_LABEL,
   TIPO_NEGOCIACAO_LABEL,
   TIPO_VEICULO_LABEL,
 } from "@/lib/format";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { PageHeader } from "@/components/layout/PageHeader";
+import { StatusBadge } from "@/components/catira/StatusBadge";
+import { ValorMonetario } from "@/components/catira/ValorMonetario";
 import DespesaForm from "./DespesaForm";
 import { ExcluirDespesaButton, VeiculoAcoes } from "./BotoesAcao";
-
-function corResultado(valor: number | null): string {
-  if (valor === null) return "text-zinc-500 dark:text-zinc-400";
-  if (valor > 0) return "text-emerald-600 dark:text-emerald-400";
-  if (valor < 0) return "text-red-600 dark:text-red-400";
-  return "text-zinc-950 dark:text-zinc-50";
-}
 
 export default async function VeiculoDetalhePage({
   params,
@@ -49,168 +49,189 @@ export default async function VeiculoDetalhePage({
   });
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-6 py-10">
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold text-zinc-950 dark:text-zinc-50">
-              {veiculo.marca} {veiculo.modelo}
-              {veiculo.ano_modelo ? ` ${veiculo.ano_modelo}` : ""}
-            </h1>
-            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-              {TIPO_VEICULO_LABEL[veiculo.tipo]}
-            </span>
-            <span className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-              {STATUS_VEICULO_LABEL[veiculo.status]}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {[veiculo.versao, veiculo.placa, veiculo.cor, veiculo.combustivel]
-              .filter(Boolean)
-              .join(" · ") || "Sem detalhes adicionais"}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          <VeiculoAcoes id={veiculo.id} />
-          <Link href="/veiculos" className="text-sm text-zinc-500 hover:underline dark:text-zinc-400">
-            Voltar
-          </Link>
-        </div>
+    <div className="mx-auto w-full max-w-5xl">
+      <PageHeader
+        titulo={`${veiculo.marca} ${veiculo.modelo}${veiculo.ano_modelo ? ` ${veiculo.ano_modelo}` : ""}`}
+        subtitulo={
+          [veiculo.versao, veiculo.placa, veiculo.cor, veiculo.combustivel].filter(Boolean).join(" · ") ||
+          "Sem detalhes adicionais"
+        }
+        acao={
+          <>
+            <VeiculoAcoes id={veiculo.id} />
+            <Link
+              href="/veiculos"
+              className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:underline"
+            >
+              <ArrowLeft className="size-4" />
+              Voltar
+            </Link>
+          </>
+        }
+      />
+
+      <div className="mb-6 flex flex-wrap items-center gap-2">
+        <Badge variant="outline">{TIPO_VEICULO_LABEL[veiculo.tipo]}</Badge>
+        <StatusBadge tipo="veiculo" status={veiculo.status} />
       </div>
 
-      <section className="mb-8 grid gap-4 rounded-lg border border-black/[.08] p-4 dark:border-white/[.145] sm:grid-cols-3 lg:grid-cols-4">
-        <div>
-          <p className="text-xs font-medium uppercase text-zinc-400">Aquisição</p>
-          <p className="mt-1 text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-            {entrada ? formatarMoeda(entrada.valor_atribuido) : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase text-zinc-400">Despesas</p>
-          <p className="mt-1 text-sm font-semibold text-amber-600 dark:text-amber-400">
-            {formatarMoeda(resultado.despesas)}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase text-zinc-400">Custo total</p>
-          <p className="mt-1 text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-            {resultado.custo_total !== null ? formatarMoeda(resultado.custo_total) : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase text-zinc-400">Saída</p>
-          <p className="mt-1 text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-            {saida ? formatarMoeda(saida.valor_atribuido) : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase text-zinc-400">Lucro</p>
-          <p className={`mt-1 text-sm font-semibold ${corResultado(resultado.lucro)}`}>
-            {resultado.lucro !== null ? formatarMoeda(resultado.lucro) : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase text-zinc-400">Margem</p>
-          <p className={`mt-1 text-sm font-semibold ${corResultado(resultado.margem_pct)}`}>
-            {resultado.margem_pct !== null ? `${resultado.margem_pct.toFixed(1)}%` : "—"}
-          </p>
-        </div>
-        <div>
-          <p className="text-xs font-medium uppercase text-zinc-400">Dias em estoque</p>
-          <p className="mt-1 text-sm font-semibold text-zinc-950 dark:text-zinc-50">
-            {resultado.dias_em_estoque ?? "—"}
-          </p>
-        </div>
-      </section>
+      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="min-w-0">
+          <Tabs defaultValue="resultado">
+            <TabsList>
+              <TabsTrigger value="resultado">Resultado</TabsTrigger>
+              <TabsTrigger value="movimentacoes">Movimentações</TabsTrigger>
+              <TabsTrigger value="despesas">Despesas</TabsTrigger>
+            </TabsList>
 
-      <section className="mb-8">
-        <h2 className="mb-3 text-base font-semibold text-zinc-950 dark:text-zinc-50">
-          Movimentações
-        </h2>
-        {veiculo.movimentacoes.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhuma negociação vinculada.</p>
-        ) : (
-          <div className="overflow-x-auto rounded-lg border border-black/[.08] dark:border-white/[.145]">
-            <table className="w-full text-sm">
-              <thead className="bg-zinc-50 text-left text-xs uppercase text-zinc-500 dark:bg-zinc-900 dark:text-zinc-400">
-                <tr>
-                  <th className="px-3 py-2 font-medium">Data</th>
-                  <th className="px-3 py-2 font-medium">Tipo</th>
-                  <th className="px-3 py-2 font-medium">Direção</th>
-                  <th className="px-3 py-2 font-medium">Contraparte</th>
-                  <th className="px-3 py-2 font-medium">Valor</th>
-                  <th className="px-3 py-2 font-medium"></th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-black/[.08] dark:divide-white/[.08]">
-                {veiculo.movimentacoes.map((m) => (
-                  <tr key={m.id}>
-                    <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
-                      {formatarData(m.negociacao.data_negociacao)}
-                    </td>
-                    <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
-                      {TIPO_NEGOCIACAO_LABEL[m.negociacao.tipo]}
-                    </td>
-                    <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
-                      {m.direcao === "entrada" ? "Entrada" : "Saída"}
-                    </td>
-                    <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
-                      {m.negociacao.contraparte_nome}
-                    </td>
-                    <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
-                      {formatarMoeda(m.valor_atribuido)}
-                    </td>
-                    <td className="px-3 py-2">
-                      <Link
-                        href={`/negocios/${m.negociacao_id}/editar`}
-                        className="text-sm text-zinc-600 hover:underline dark:text-zinc-400"
-                      >
-                        Editar negociação
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </section>
+            <TabsContent value="resultado" className="mt-4">
+              <Card>
+                <CardContent className="grid gap-4 sm:grid-cols-3">
+                  <Estatistica titulo="Aquisição" valor={entrada ? formatarMoeda(entrada.valor_atribuido) : "—"} />
+                  <Estatistica titulo="Despesas" valor={formatarMoeda(resultado.despesas)} tomAtencao />
+                  <Estatistica
+                    titulo="Custo total"
+                    valor={resultado.custo_total !== null ? formatarMoeda(resultado.custo_total) : "—"}
+                  />
+                  <Estatistica titulo="Saída" valor={saida ? formatarMoeda(saida.valor_atribuido) : "—"} />
+                  <Estatistica
+                    titulo="Lucro"
+                    valor={resultado.lucro !== null ? <ValorMonetario valor={resultado.lucro} /> : "—"}
+                  />
+                  <Estatistica
+                    titulo="Margem"
+                    valor={resultado.margem_pct !== null ? `${resultado.margem_pct.toFixed(1)}%` : "—"}
+                  />
+                  <Estatistica titulo="Dias em estoque" valor={resultado.dias_em_estoque ?? "—"} />
+                </CardContent>
+              </Card>
+            </TabsContent>
 
-      <section className="space-y-4">
-        <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-50">Despesas</h2>
+            <TabsContent value="movimentacoes" className="mt-4">
+              {veiculo.movimentacoes.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma negociação vinculada.</p>
+              ) : (
+                <Card>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Data</TableHead>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Direção</TableHead>
+                          <TableHead>Contraparte</TableHead>
+                          <TableHead>Valor</TableHead>
+                          <TableHead />
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {veiculo.movimentacoes.map((m) => (
+                          <TableRow key={m.id}>
+                            <TableCell>{formatarData(m.negociacao.data_negociacao)}</TableCell>
+                            <TableCell>{TIPO_NEGOCIACAO_LABEL[m.negociacao.tipo]}</TableCell>
+                            <TableCell>{m.direcao === "entrada" ? "Entrada" : "Saída"}</TableCell>
+                            <TableCell>{m.negociacao.contraparte_nome}</TableCell>
+                            <TableCell>{formatarMoeda(m.valor_atribuido)}</TableCell>
+                            <TableCell>
+                              <Link
+                                href={`/negocios/${m.negociacao_id}/editar`}
+                                className="text-sm text-muted-foreground hover:underline"
+                              >
+                                Editar negociação
+                              </Link>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
 
-        <DespesaForm veiculoId={veiculo.id} />
+            <TabsContent value="despesas" className="mt-4 space-y-4">
+              <DespesaForm veiculoId={veiculo.id} />
 
-        {veiculo.despesas.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">Nenhuma despesa lançada.</p>
-        ) : (
-          <ul className="space-y-2">
-            {veiculo.despesas.map((despesa) => (
-              <li
-                key={despesa.id}
-                className="flex items-center justify-between rounded-lg border border-black/[.08] px-4 py-2.5 dark:border-white/[.145]"
-              >
-                <div className="text-sm">
-                  <span className="font-medium text-zinc-950 dark:text-zinc-50">
-                    {CATEGORIA_DESPESA_LABEL[despesa.categoria]}
-                  </span>
-                  <span className="text-zinc-500 dark:text-zinc-400"> · {despesa.descricao}</span>
-                  <span className="text-zinc-500 dark:text-zinc-400">
-                    {" "}
-                    · {formatarData(despesa.data)}
-                  </span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-medium text-zinc-950 dark:text-zinc-50">
-                    {formatarMoeda(despesa.valor)}
-                  </span>
-                  <ExcluirDespesaButton id={despesa.id} veiculoId={veiculo.id} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+              {veiculo.despesas.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma despesa lançada.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {veiculo.despesas.map((despesa) => (
+                    <li key={despesa.id}>
+                      <Card>
+                        <CardContent className="flex items-center justify-between">
+                          <div className="text-sm">
+                            <span className="font-medium text-foreground">
+                              {CATEGORIA_DESPESA_LABEL[despesa.categoria]}
+                            </span>
+                            <span className="text-muted-foreground"> · {despesa.descricao}</span>
+                            <span className="text-muted-foreground"> · {formatarData(despesa.data)}</span>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <span className="text-sm font-medium text-foreground">
+                              {formatarMoeda(despesa.valor)}
+                            </span>
+                            <ExcluirDespesaButton id={despesa.id} veiculoId={veiculo.id} />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        <Card className="h-fit">
+          <CardHeader>
+            <CardTitle className="text-sm">Dados do veículo</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <DadoLinha label="Tipo" valor={TIPO_VEICULO_LABEL[veiculo.tipo]} />
+            <DadoLinha label="Versão" valor={veiculo.versao} />
+            <DadoLinha label="Ano fab./modelo" valor={[veiculo.ano_fabricacao, veiculo.ano_modelo].filter(Boolean).join("/") || null} />
+            <DadoLinha label="Placa" valor={veiculo.placa} />
+            <DadoLinha label="Cor" valor={veiculo.cor} />
+            <DadoLinha label="KM" valor={veiculo.km !== null ? veiculo.km.toLocaleString("pt-BR") : null} />
+            <DadoLinha label="Combustível" valor={veiculo.combustivel} />
+            <DadoLinha label="Transmissão" valor={veiculo.transmissao} />
+            {veiculo.observacoes && (
+              <div className="pt-2">
+                <p className="text-xs font-medium uppercase text-muted-foreground">Observações</p>
+                <p className="mt-1 text-foreground">{veiculo.observacoes}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function Estatistica({
+  titulo,
+  valor,
+  tomAtencao = false,
+}: {
+  titulo: string;
+  valor: React.ReactNode;
+  tomAtencao?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase text-muted-foreground">{titulo}</p>
+      <p className={`mt-1 text-sm font-semibold ${tomAtencao ? "text-atencao" : "text-foreground"}`}>{valor}</p>
+    </div>
+  );
+}
+
+function DadoLinha({ label, valor }: { label: string; valor: string | null }) {
+  if (!valor) return null;
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="text-foreground">{valor}</span>
     </div>
   );
 }
