@@ -8,7 +8,8 @@ vendas e trocas de veículos ("catira"), com IA como copiloto de análise e deci
 ## Stack
 
 Next.js 16 (App Router, Turbopack) + TypeScript + Tailwind CSS + Supabase (Postgres + Auth).
-Deploy planejado na Vercel. PWA é objetivo de fase final, não implementado ainda.
+Deploy em produção na Vercel: https://catira.vercel.app (projeto `catira`, org `devkaikys-projects`).
+PWA é objetivo de fase final, não implementado ainda.
 
 **Atenção Next.js 16:** `middleware.ts` foi renomeado para `proxy.ts` (função `proxy`, não
 `middleware`). Ver `AGENTS.md` — sempre checar `node_modules/next/dist/docs/` antes de usar APIs
@@ -19,12 +20,42 @@ do Next, pois a versão instalada é mais recente que o conhecimento do modelo.
 - [x] **Fase 1** — banco de dados + autenticação de usuário único (e-mail/senha via Supabase
       Auth, sem tela de cadastro público — o usuário é criado manualmente no dashboard).
 - [x] **Fase 2** — cadastro manual de negócios (compra/venda/troca) com formulário completo.
-- [ ] Fase 3 — relatórios de IA (diário/semanal/mensal).
+- [x] **Fase 3** — relatórios de IA sob demanda (diário/semanal/mensal/personalizado) em
+      `/relatorios`. Métricas (incluindo lucro real cruzando as duas pontas de cada veículo) são
+      calculadas em TypeScript puro (`src/lib/relatorios/metricas.ts`) — a IA só interpreta os
+      números prontos, nunca faz conta. Relatório é persistido na tabela `relatorios`
+      (`supabase/migrations/0004_relatorios.sql`), com snapshot das métricas + análise em JSON
+      estruturado. Ver "Camada de IA trocável" abaixo.
 - [ ] Fase 4 — simulação de negócios futuros com parecer de IA.
 - [ ] Fase 5 — integração com tabela Fipe (ex: API `parallelum.com.br/fipe`, gratuita) e pesquisa
       de mercado (OLX/Webmotors não têm API pública nem permitem scraping — usar campo manual de
       referência de preço por enquanto).
 - [ ] Fase 6 — refino como PWA.
+
+## Camada de IA trocável (Fase 3+)
+
+O usuário quer poder alternar entre provedores de IA (Gemini Flash hoje; Deepseek e Kimi K2 são
+candidatos futuros) sem reescrever a integração. `src/lib/ai/types.ts` define o contrato
+`ProvedorIA` (`gerar(pedido) -> RespostaIA`, texto cru, sem validar shape). `src/lib/ai/index.ts`
+(`getProvedorIA()`) escolhe a implementação pela env var `AI_PROVIDER` (`gemini` por padrão).
+Nenhuma camada acima (`actions.ts`, `src/lib/relatorios/*`) importa um provedor específico
+diretamente — sempre passam por `getProvedorIA()`.
+
+- Implementação atual: `src/lib/ai/gemini.ts`, SDK `@google/genai`, usando `ai.interactions.create`
+  (não `ai.models.generateContent`, que é o caminho legado) com o modelo `gemini-3.7-flash`.
+- Para adicionar Deepseek/Kimi K2 (ambos OpenAI-compatible): criar `src/lib/ai/openai-compat.ts`
+  com uma factory parametrizada por `baseURL`/`model`, registrar no switch de `getProvedorIA()`, e
+  trocar `AI_PROVIDER` na Vercel. Nenhum outro arquivo muda.
+- API key resolvida nesta ordem: env específica do provedor (`GEMINI_API_KEY`,
+  `DEEPSEEK_API_KEY`, `KIMI_API_KEY`) → fallback `AI_API_KEY`. `AI_MODEL` opcional sobrescreve o
+  modelo default. Todas server-only, sem prefixo `NEXT_PUBLIC_`.
+- **Decisão explícita:** não usar a camada OpenAI-compatible do próprio Gemini para unificar tudo
+  numa implementação só — ela ignora silenciosamente parâmetros não suportados, o que quebraria
+  structured output sem erro claro.
+- Nos relatórios, a IA **nunca faz conta**: todas as métricas são calculadas em TypeScript puro
+  (`src/lib/relatorios/metricas.ts`) antes de montar o prompt; a IA só interpreta os números já
+  prontos e devolve um JSON estruturado (`resumo`, `destaques`, `alertas`, `recomendacoes`),
+  validado manualmente em `actions.ts` antes de persistir.
 
 ## Modelagem do banco (decisão central do projeto)
 
@@ -53,9 +84,15 @@ em `src/app/(app)/negocios/novo/actions.ts`.
 
 ## Migrations
 
-Rodar manualmente no SQL Editor do Supabase, em ordem:
+Projeto Supabase real: `catira` (ref `oupdxblwdtmqpczaqqyl`, região `sa-east-1`). Aplicadas via
+MCP do Supabase (`mcp__supabase__apply_migration`), em ordem — se o MCP não estiver disponível,
+rodar manualmente no SQL Editor do Supabase, na mesma ordem:
 1. `supabase/migrations/0001_init.sql` — tabelas base + RLS.
 2. `supabase/migrations/0002_criar_negociacao.sql` — função RPC transacional.
+3. `supabase/migrations/0003_fix_search_path.sql` — corrige alerta do linter de segurança
+   (`function_search_path_mutable`) fixando `search_path` nas funções.
+4. `supabase/migrations/0004_relatorios.sql` — tabela `relatorios` (histórico de relatórios de IA
+   da Fase 3) + RLS.
 
 ## Gotcha de tipagem TypeScript + Supabase
 
@@ -82,31 +119,28 @@ referenciado dentro de `Database`, os tipos de `.rpc()`/`.from()` quebram de nov
 
 ## Infraestrutura / MCP
 
-O usuário tem contas no Supabase, Vercel e Railway, e autorizou acesso via MCP a todas.
+MCP autenticado e em uso para Supabase, Vercel e Railway (escopo de usuário, disponível em
+qualquer sessão). Estado atual, já provisionado:
 
-- **Railway**: MCP já funcionando (escopo de usuário, `railway mcp`, stdio).
-- **Supabase**: registrado via `claude mcp add --scope user --transport http supabase https://mcp.supabase.com/mcp`.
-  Falta autenticar via `/mcp` no chat (OAuth por navegador).
-- **Vercel**: registrado via `claude mcp add --scope user vercel --transport http https://mcp.vercel.com`.
-  Falta autenticar via `/mcp` no chat (OAuth por navegador).
+- **Supabase**: projeto `catira` (ref `oupdxblwdtmqpczaqqyl`, `sa-east-1`). Migrations aplicadas
+  via `mcp__supabase__apply_migration`. Usuário de login criado via API Admin de Auth (não há tela
+  de cadastro público — login manual em `/login`).
+- **Vercel**: projeto `catira` em produção (https://catira.vercel.app, org `devkaikys-projects`).
+  Repositório `DevKaiky/catira` no GitHub conectado para deploy automático a cada push em
+  `master`. Vercel CLI também instalada e linkada localmente (`vercel` na PATH) — útil para
+  `vercel env add/pull` e deploys manuais (`vercel --prod`) quando o MCP não cobre algo (ex: a
+  Vercel MCP não tem tool para setar env vars, só a CLI/dashboard tem).
+- **Railway**: MCP funcionando, ainda sem uso neste projeto.
 
-**Pegadinha de escopo:** na primeira tentativa, os dois foram adicionados com `--scope local`
-(padrão do comando), o que os prendeu ao diretório do projeto `catira`. Como esta sessão de chat
-roda a partir de `C:\Users\Usuario` (não de dentro de `catira`), os servidores não apareciam no
-painel `/mcp`. Foram removidos e re-adicionados com `--scope user` para ficarem disponíveis em
-qualquer sessão, igual ao Railway. Mesmo assim, servidores adicionados **durante** uma sessão só
-aparecem no painel `/mcp` dela após reiniciar o Claude Code — o painel não recarrega a lista
-dinamicamente em uma sessão já em andamento.
-
-**Assim que a sessão for reiniciada com os MCPs autenticados**, o próximo passo é: criar o projeto
-real no Supabase, rodar as duas migrations nele, preencher `.env.local` a partir de
-`.env.local.example`, e configurar o deploy na Vercel — tudo via MCP, sem o usuário precisar
-mexer nos painéis manualmente.
+Env vars da Vercel (Production/Preview/Development): `NEXT_PUBLIC_SUPABASE_URL`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `AI_PROVIDER`, `GEMINI_API_KEY`.
 
 ## Preferências de trabalho
 
 - Responder sempre em pt-BR.
-- Só criar/commitar no git quando o usuário pedir explicitamente (repo já foi `git init`, mas sem
-  commits ainda).
+- Só criar/commitar no git quando o usuário pedir explicitamente.
 - Rodar `npx tsc --noEmit`, `npm run build` e `npm run lint` depois de mudanças estruturais antes
   de reportar como concluído.
+- Para features novas de porte médio/grande, passar primeiro pelo agente `system-architect` (plano
+  sem código) e só depois pelo `feature-lead` (implementação) — evita decisões de arquitetura
+  tomadas às pressas no meio da implementação.

@@ -8,6 +8,8 @@
 // implicit index signature que `type` recebe), o que quebra a inferência
 // de tipos do `.rpc()` e de `.from(...)` silenciosamente.
 
+import type { AnaliseIA, GranularidadeRelatorio, MetricasPeriodo } from "@/types/relatorios";
+
 export type TipoVeiculo = "carro" | "moto" | "caminhonete" | "outro";
 export type StatusVeiculo = "em_estoque" | "vendido" | "repassado";
 export type Transmissao = "manual" | "automatico" | "cvt";
@@ -114,6 +116,25 @@ export type ItemNegociacaoInput =
       veiculo_id: string;
     };
 
+export type Relatorio = {
+  id: string;
+  created_by: string;
+
+  granularidade: GranularidadeRelatorio;
+  periodo_inicio: string;
+  periodo_fim: string;
+
+  metricas: MetricasPeriodo;
+  analise: AnaliseIA;
+
+  provedor: string;
+  modelo: string;
+  tokens_entrada: number | null;
+  tokens_saida: number | null;
+
+  created_at: string;
+};
+
 export type Database = {
   public: {
     Views: Record<string, never>;
@@ -137,6 +158,13 @@ export type Database = {
         Insert: Omit<NegociacaoVeiculo, "id" | "created_by" | "created_at"> &
           Partial<Pick<NegociacaoVeiculo, "id" | "created_by">>;
         Update: Partial<NegociacaoVeiculo>;
+        Relationships: [];
+      };
+      relatorios: {
+        Row: Relatorio;
+        Insert: Omit<Relatorio, "id" | "created_by" | "created_at"> &
+          Partial<Pick<Relatorio, "id" | "created_by">>;
+        Update: Partial<Relatorio>;
         Relationships: [];
       };
     };
