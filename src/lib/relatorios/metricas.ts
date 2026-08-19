@@ -3,15 +3,12 @@
 // A IA nunca faz conta: só interpreta o que sai daqui.
 
 import { diferencaEmDias, duracaoEmDias, hojeSaoPaulo } from "@/lib/relatorios/periodo";
+import { arredondar, calcularResultadoVeiculo } from "@/lib/veiculos/resultado";
 import type { DadosBrutosPeriodo, LegAquisicao } from "@/lib/queries/relatorios";
 import type { NegociacaoComVeiculos, TipoNegociacao, TipoVeiculo, Veiculo } from "@/types/database";
 import type { GranularidadeRelatorio, MetricasPeriodo, Periodo, VeiculoRealizado } from "@/types/relatorios";
 
 const CAP_VEICULOS_RESULTADO = 20;
-
-function arredondar(valor: number): number {
-  return Math.round(valor * 100) / 100;
-}
 
 function media(valores: number[]): number | null {
   if (valores.length === 0) return null;
@@ -30,7 +27,9 @@ function negociacaoNoIntervalo(negociacao: NegociacaoComVeiculos, periodo: Perio
 /** Veículos com saída concluída dentro do período — lucro é atribuído ao período da SAÍDA. */
 function veiculosRealizadosDoPeriodo(
   negociacoes: NegociacaoComVeiculos[],
-  aquisicoes: Record<string, LegAquisicao>
+  aquisicoes: Record<string, LegAquisicao>,
+  despesasPorVeiculo: Record<string, number>,
+  hoje: string
 ): VeiculoRealizado[] {
   const realizados: VeiculoRealizado[] = [];
 
@@ -43,12 +42,16 @@ function veiculosRealizadosDoPeriodo(
       const aquisicao = aquisicoes[item.veiculo_id] ?? null;
       const valorSaida = item.valor_atribuido;
       const dataSaida = negociacao.data_negociacao;
-      const lucro = aquisicao ? arredondar(valorSaida - aquisicao.valor) : null;
-      const margemPct =
-        aquisicao && lucro !== null && aquisicao.valor !== 0
-          ? arredondar((lucro / aquisicao.valor) * 100)
-          : null;
-      const diasEmEstoque = aquisicao ? diferencaEmDias(aquisicao.data, dataSaida) : null;
+      const despesas = despesasPorVeiculo[item.veiculo_id] ?? 0;
+
+      const resultado = calcularResultadoVeiculo({
+        valorAquisicao: aquisicao ? aquisicao.valor : null,
+        dataAquisicao: aquisicao ? aquisicao.data : null,
+        valorSaida,
+        dataSaida,
+        despesas,
+        hoje,
+      });
 
       realizados.push({
         veiculo_id: item.veiculo_id,
@@ -58,9 +61,11 @@ function veiculosRealizadosDoPeriodo(
         data_aquisicao: aquisicao ? aquisicao.data : null,
         valor_saida: valorSaida,
         data_saida: dataSaida,
-        lucro,
-        margem_pct: margemPct,
-        dias_em_estoque: diasEmEstoque,
+        lucro: resultado.lucro,
+        margem_pct: resultado.margem_pct,
+        dias_em_estoque: resultado.dias_em_estoque,
+        despesas: resultado.despesas,
+        custo_total: resultado.custo_total,
       });
     }
   }
@@ -80,6 +85,7 @@ export function calcularMetricas(
   periodoAnterior: Periodo,
   granularidade: GranularidadeRelatorio
 ): MetricasPeriodo {
+  const hoje = hojeSaoPaulo();
   const negociacoesPeriodo = dados.negociacoes.filter((n) => negociacaoNoIntervalo(n, periodo));
   const negociacoesPeriodoAnterior = dados.negociacoes.filter((n) =>
     negociacaoNoIntervalo(n, periodoAnterior)
@@ -138,14 +144,22 @@ export function calcularMetricas(
     dinheiro_pago: dinheiroPago,
     caixa_liquido: caixaLiquido,
     desequilibrio_declarado: desequilibrioDeclarado,
+    despesas_periodo: dados.despesasPeriodo,
   };
 
   // ---- resultado (lucro real, cruzando as duas pontas) --------------------
-  const veiculosRealizados = veiculosRealizadosDoPeriodo(negociacoesPeriodo, dados.aquisicoes);
+  const veiculosRealizados = veiculosRealizadosDoPeriodo(
+    negociacoesPeriodo,
+    dados.aquisicoes,
+    dados.despesasPorVeiculo,
+    hoje
+  );
 
   const comCusto = veiculosRealizados.filter((v) => v.lucro !== null);
   const lucroBruto = somarLucro(comCusto);
-  const custoTotal = arredondar(comCusto.reduce((soma, v) => soma + (v.valor_aquisicao ?? 0), 0));
+  // custo_total agora inclui despesas (não só o valor de aquisição) — ver src/lib/veiculos/resultado.ts.
+  const custoTotal = arredondar(comCusto.reduce((soma, v) => soma + (v.custo_total ?? 0), 0));
+  const despesasTotal = arredondar(comCusto.reduce((soma, v) => soma + (v.despesas ?? 0), 0));
   const qtdLucro = comCusto.filter((v) => (v.lucro ?? 0) > 0).length;
   const qtdPrejuizo = comCusto.filter((v) => (v.lucro ?? 0) < 0).length;
   const qtdSemCusto = veiculosRealizados.length - comCusto.length;
@@ -180,19 +194,27 @@ export function calcularMetricas(
     dias_estoque_medio: diasEstoqueMedio,
     melhor,
     pior,
+    despesas_total: despesasTotal,
   };
 
   // ---- estoque (capital parado, snapshot atual) ----------------------------
   const porTipoEstoque: Record<TipoVeiculo, number> = { carro: 0, moto: 0, caminhonete: 0, outro: 0 };
   let capitalParado = 0;
+  let despesasAcumuladas = 0;
+  let qtdSemAquisicao = 0;
   let maisAntigo: { veiculo_id: string; descricao: string; dias_em_estoque: number } | null = null;
-  const hoje = hojeSaoPaulo();
 
-  for (const { veiculo, aquisicao } of dados.estoque) {
+  for (const { veiculo, aquisicao, despesas } of dados.estoque) {
     porTipoEstoque[veiculo.tipo] += 1;
-    if (!aquisicao) continue;
+    despesasAcumuladas += despesas;
 
-    capitalParado += aquisicao.valor;
+    if (!aquisicao) {
+      qtdSemAquisicao += 1;
+      capitalParado += despesas;
+      continue;
+    }
+
+    capitalParado += aquisicao.valor + despesas;
     const diasEmEstoque = diferencaEmDias(aquisicao.data, hoje);
     if (!maisAntigo || diasEmEstoque > maisAntigo.dias_em_estoque) {
       maisAntigo = {
@@ -208,6 +230,8 @@ export function calcularMetricas(
     capital_parado: arredondar(capitalParado),
     por_tipo: porTipoEstoque,
     mais_antigo: maisAntigo,
+    despesas_acumuladas: arredondar(despesasAcumuladas),
+    qtd_sem_aquisicao: qtdSemAquisicao,
   };
 
   // ---- período anterior (comparação) ---------------------------------------
@@ -226,7 +250,9 @@ export function calcularMetricas(
   );
   const veiculosRealizadosAnterior = veiculosRealizadosDoPeriodo(
     negociacoesPeriodoAnterior,
-    dados.aquisicoes
+    dados.aquisicoes,
+    dados.despesasPorVeiculo,
+    hoje
   );
 
   const periodoAnteriorMetricas: MetricasPeriodo["periodo_anterior"] = {

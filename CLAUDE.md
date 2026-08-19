@@ -82,6 +82,34 @@ negociação, cria os veículos de entrada, marca como vendidos os veículos de 
 `negociacao_veiculos` — tudo em uma única transação. Chamada via `supabase.rpc('criar_negociacao', {...})`
 em `src/app/(app)/negocios/novo/actions.ts`.
 
+### Veículo avulso, edição, exclusão e despesas (módulo `/veiculos`)
+
+Um veículo não precisa mais nascer de uma negociação: `public.criar_veiculo_avulso` (RPC) insere
+o veículo direto em `veiculos` e, opcionalmente, se o usuário informar um valor de aquisição, cria
+por trás uma negociação `tipo='compra'` sintética (contraparte default "Estoque inicial") ligada
+via `negociacao_veiculos` — isso preserva `negociacao_veiculos` como **única fonte de verdade do
+custo de aquisição** (não existe campo de valor duplicado em `veiculos`). Sem aquisição informada,
+o veículo fica sem custo conhecido (cai em `qtd_sem_custo`/`qtd_sem_aquisicao` nos relatórios).
+
+`public.editar_negociacao` corrige campos da negociação e o valor/condição dos itens **já
+existentes**, mas não deixa adicionar/remover veículos (rejeita se a quantidade de itens mudar) —
+pra trocar composição, excluir e recadastrar. `public.excluir_negociacao` reverte os efeitos
+(saída volta a `em_estoque`; entrada é apagada) ou bloqueia com mensagem em pt-BR nomeando o
+veículo quando reverter corromperia outra negociação (veículo já movimentado depois, ou com
+despesas registradas). Editar/excluir veículo avulso é `.update()`/`.delete()` direto (RLS +
+`on delete restrict` já protegem; erro `23503` é traduzido pra mensagem amigável na Server Action).
+
+**Status `cancelada` só existe via exclusão** — decisão deliberada. Nem `criar_negociacao` nem
+`editar_negociacao` aceitam entrar ou sair desse status (ambos lançam exceção). Motivo: os efeitos
+no estoque já foram aplicados quando a negociação foi criada; cancelar sem excluir deixaria
+veículo fantasma (comprado sem custo, ou vendido sem venda válida). Pra desfazer um negócio,
+exclua — o sistema reverte tudo com segurança.
+
+`despesas_veiculo` (funilaria, mecânica, documentação etc.) soma ao custo de aquisição no cálculo
+de lucro real: `custo_total = valor_aquisicao + Σ despesas` (ver `src/lib/veiculos/resultado.ts`,
+função pura reusada tanto pela Fase 3 quanto pela página de detalhe do veículo). `caixa_liquido`
+dos relatórios **não** desconta despesas — elas aparecem separadas em `resumo.despesas_periodo`.
+
 ## Migrations
 
 Projeto Supabase real: `catira` (ref `oupdxblwdtmqpczaqqyl`, região `sa-east-1`). Aplicadas via
@@ -93,6 +121,10 @@ rodar manualmente no SQL Editor do Supabase, na mesma ordem:
    (`function_search_path_mutable`) fixando `search_path` nas funções.
 4. `supabase/migrations/0004_relatorios.sql` — tabela `relatorios` (histórico de relatórios de IA
    da Fase 3) + RLS.
+5. `supabase/migrations/0005_despesas_veiculo.sql` — tabela `despesas_veiculo` + RLS.
+6. `supabase/migrations/0006_veiculos_avulsos_e_edicao.sql` — RPCs `criar_veiculo_avulso`,
+   `editar_negociacao`, `excluir_negociacao`, e reescrita de `criar_negociacao` (rejeita status
+   `cancelada` na criação).
 
 ## Gotcha de tipagem TypeScript + Supabase
 

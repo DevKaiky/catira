@@ -21,3 +21,18 @@ export const TIPO_NEGOCIACAO_LABEL: Record<string, string> = {
   venda: "Venda",
   troca: "Troca",
 };
+
+export const STATUS_VEICULO_LABEL: Record<string, string> = {
+  em_estoque: "Em estoque",
+  vendido: "Vendido",
+  repassado: "Repassado",
+};
+
+export const CATEGORIA_DESPESA_LABEL: Record<string, string> = {
+  funilaria: "Funilaria",
+  mecanica: "Mecânica",
+  documentacao: "Documentação",
+  estetica: "Estética",
+  transporte: "Transporte",
+  outro: "Outro",
+};

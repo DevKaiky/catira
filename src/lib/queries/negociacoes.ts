@@ -17,6 +17,22 @@ export async function listarNegociacoes(): Promise<NegociacaoComVeiculos[]> {
   return (data ?? []) as unknown as NegociacaoComVeiculos[];
 }
 
+export async function buscarNegociacao(id: string): Promise<NegociacaoComVeiculos | null> {
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("negociacoes")
+    .select("*, itens:negociacao_veiculos(*, veiculo:veiculos(*))")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Falha ao carregar negociação: ${error.message}`);
+  }
+
+  return data as unknown as NegociacaoComVeiculos | null;
+}
+
 export async function listarVeiculosEmEstoque(): Promise<Veiculo[]> {
   const supabase = await createClient();
 

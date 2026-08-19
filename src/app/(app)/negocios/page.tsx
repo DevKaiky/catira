@@ -56,9 +56,17 @@ export default async function NegociosPage() {
                       </span>
                     )}
                   </div>
-                  <span className="text-sm font-medium text-zinc-950 dark:text-zinc-50">
-                    {negociacao.contraparte_nome}
-                  </span>
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-zinc-950 dark:text-zinc-50">
+                      {negociacao.contraparte_nome}
+                    </span>
+                    <Link
+                      href={`/negocios/${negociacao.id}/editar`}
+                      className="text-sm text-zinc-600 hover:underline dark:text-zinc-400"
+                    >
+                      Editar
+                    </Link>
+                  </div>
                 </div>
 
                 <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">

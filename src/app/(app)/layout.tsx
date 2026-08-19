@@ -29,6 +29,12 @@ export default async function AppLayout({ children }: { children: React.ReactNod
               Negócios
             </Link>
             <Link
+              href="/veiculos"
+              className="text-sm text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              Veículos
+            </Link>
+            <Link
               href="/relatorios"
               className="text-sm text-zinc-600 transition-colors hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-zinc-50"
             >

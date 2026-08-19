@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { criarNegociacao } from "./actions";
 import type {
   ItemNegociacaoInput,
@@ -261,7 +262,6 @@ export default function NegociacaoForm({ veiculosEmEstoque }: { veiculosEmEstoqu
           >
             <option value="concluida">Concluída</option>
             <option value="pendente">Pendente</option>
-            <option value="cancelada">Cancelada</option>
           </select>
         </div>
       </section>
@@ -300,7 +300,12 @@ export default function NegociacaoForm({ veiculosEmEstoque }: { veiculosEmEstoqu
         {itens.length === 0 && (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
             Nenhum veículo adicionado ainda. Entrada = veículo que você está recebendo (compra ou
-            troca). Saída = veículo do seu estoque que está saindo (venda ou dado em troca).
+            troca). Saída = veículo do seu estoque que está saindo (venda ou dado em troca).{" "}
+            Nenhum veículo em estoque ainda?{" "}
+            <Link href="/veiculos/novo" className="underline hover:text-zinc-950 dark:hover:text-zinc-50">
+              Cadastre um veículo
+            </Link>{" "}
+            ou registre uma compra.
           </p>
         )}
 
@@ -502,7 +507,11 @@ export default function NegociacaoForm({ veiculosEmEstoque }: { veiculosEmEstoqu
                   </select>
                   {veiculosEmEstoque.length === 0 && (
                     <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                      Nenhum veículo em estoque ainda. Registre uma compra primeiro.
+                      Nenhum veículo em estoque ainda.{" "}
+                      <Link href="/veiculos/novo" className="underline hover:text-zinc-950 dark:hover:text-zinc-50">
+                        Cadastre um veículo
+                      </Link>{" "}
+                      ou registre uma compra.
                     </p>
                   )}
                 </div>

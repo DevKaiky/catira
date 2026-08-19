@@ -58,6 +58,7 @@ export default async function RelatorioPage({ params }: { params: Promise<{ id: 
                   <tr>
                     <th className="px-3 py-2 font-medium">Veículo</th>
                     <th className="px-3 py-2 font-medium">Aquisição</th>
+                    <th className="px-3 py-2 font-medium">Despesas</th>
                     <th className="px-3 py-2 font-medium">Saída</th>
                     <th className="px-3 py-2 font-medium">Lucro</th>
                     <th className="px-3 py-2 font-medium">Margem</th>
@@ -72,6 +73,9 @@ export default async function RelatorioPage({ params }: { params: Promise<{ id: 
                       </td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
                         {veiculo.valor_aquisicao !== null ? formatarMoeda(veiculo.valor_aquisicao) : "—"}
+                      </td>
+                      <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
+                        {veiculo.despesas !== undefined ? formatarMoeda(veiculo.despesas) : "—"}
                       </td>
                       <td className="px-3 py-2 text-zinc-700 dark:text-zinc-300">
                         {formatarMoeda(veiculo.valor_saida)}

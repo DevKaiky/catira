@@ -19,6 +19,14 @@ export type StatusNegociacao = "concluida" | "pendente" | "cancelada";
 
 export type DirecaoVeiculoNaNegociacao = "entrada" | "saida";
 
+export type CategoriaDespesa =
+  | "funilaria"
+  | "mecanica"
+  | "documentacao"
+  | "estetica"
+  | "transporte"
+  | "outro";
+
 export type Veiculo = {
   id: string;
   created_by: string;
@@ -83,6 +91,35 @@ export type NegociacaoVeiculo = {
 /** Negociação com seus veículos (entrada/saída) já unidos, útil para telas e relatórios. */
 export type NegociacaoComVeiculos = Negociacao & {
   itens: (NegociacaoVeiculo & { veiculo: Veiculo })[];
+};
+
+export type DespesaVeiculo = {
+  id: string;
+  created_by: string;
+
+  veiculo_id: string;
+
+  categoria: CategoriaDespesa;
+  descricao: string;
+  valor: number;
+  data: string;
+
+  created_at: string;
+};
+
+/** Payload de aquisição retroativa opcional no cadastro avulso de veículo. */
+export type AquisicaoRetroativaInput = {
+  valor: number;
+  data: string;
+  contraparte_nome?: string;
+  observacoes?: string;
+};
+
+/** Um item existente sendo corrigido na edição de negociação (sem adicionar/remover veículos). */
+export type ItemEdicaoInput = {
+  id: string;
+  valor_atribuido: number;
+  condicao_na_negociacao?: string;
 };
 
 /** Dados de um veículo novo entrando no estoque, usados no payload de criar_negociacao. */
@@ -167,6 +204,13 @@ export type Database = {
         Update: Partial<Relatorio>;
         Relationships: [];
       };
+      despesas_veiculo: {
+        Row: DespesaVeiculo;
+        Insert: Omit<DespesaVeiculo, "id" | "created_by" | "created_at"> &
+          Partial<Pick<DespesaVeiculo, "id" | "created_by">>;
+        Update: Partial<DespesaVeiculo>;
+        Relationships: [];
+      };
     };
     Functions: {
       criar_negociacao: {
@@ -181,6 +225,31 @@ export type Database = {
           p_itens: ItemNegociacaoInput[];
         };
         Returns: string;
+      };
+      criar_veiculo_avulso: {
+        Args: {
+          p_veiculo: NovoVeiculoInput;
+          p_aquisicao: AquisicaoRetroativaInput | null;
+        };
+        Returns: string;
+      };
+      editar_negociacao: {
+        Args: {
+          p_negociacao_id: string;
+          p_tipo: TipoNegociacao;
+          p_data_negociacao: string;
+          p_contraparte_nome: string;
+          p_contraparte_contato: string | null;
+          p_valor_volta: number;
+          p_status: StatusNegociacao;
+          p_observacoes: string | null;
+          p_itens: ItemEdicaoInput[];
+        };
+        Returns: string;
+      };
+      excluir_negociacao: {
+        Args: { p_negociacao_id: string };
+        Returns: undefined;
       };
     };
   };

@@ -40,6 +40,9 @@ export default function MetricasCards({ metricas }: { metricas: MetricasPeriodo 
           {metricas.resultado.qtd_lucro} com lucro · {metricas.resultado.qtd_prejuizo} com prejuízo
           {metricas.resultado.qtd_sem_custo > 0 &&
             ` · ${metricas.resultado.qtd_sem_custo} sem custo conhecido`}
+          {metricas.resultado.despesas_total !== undefined &&
+            metricas.resultado.despesas_total > 0 &&
+            " · líquido de despesas"}
         </p>
       </Card>
 
@@ -92,6 +95,17 @@ export default function MetricasCards({ metricas }: { metricas: MetricasPeriodo 
             ` · mais antigo: ${metricas.estoque.mais_antigo.descricao} (${metricas.estoque.mais_antigo.dias_em_estoque}d)`}
         </p>
       </Card>
+
+      {metricas.resumo.despesas_periodo && metricas.resumo.despesas_periodo.total > 0 && (
+        <Card titulo="Despesas no período">
+          <p className="text-2xl font-semibold text-amber-600 dark:text-amber-400">
+            {formatarMoeda(metricas.resumo.despesas_periodo.total)}
+          </p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {metricas.resumo.despesas_periodo.qtd} lançamento(s)
+          </p>
+        </Card>
+      )}
 
       {Math.abs(metricas.resumo.desequilibrio_declarado) > 0.01 && (
         <Card titulo="Desequilíbrio declarado">
