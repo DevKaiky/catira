@@ -43,3 +43,9 @@ next-env.d.ts
 
 # supabase cli cache
 supabase/.temp/
+
+# agent / assistant config
+CLAUDE.md
+AGENTS.md
+.claude/
+.mcp.json

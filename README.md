@@ -36,8 +36,12 @@ Next.js 16 (App Router) + TypeScript + Tailwind CSS + Supabase (Postgres + Auth)
 
 ## Próximas fases
 
-2. Cadastro manual de negócios realizados.
-3. Relatórios de IA (diário/semanal/mensal).
-4. Simulação de negócios futuros com parecer de IA.
-5. Integração com tabela Fipe e pesquisa de mercado.
-6. Refino como PWA.
+1. Cadastro manual de negócios realizados.
+2. Relatórios de IA (diário/semanal/mensal).
+3. Simulação de negócios futuros com parecer de IA.
+4. Integração com tabela Fipe e pesquisa de mercado.
+5. Refino como PWA.
+
+## Autor
+
+[@DevKaiky](https://github.com/DevKaiky)
